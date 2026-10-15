@@ -45,6 +45,15 @@ var (
 
 var version string
 
+func versionFromBuildInfo() string {
+	buildInfo, ok := debug.ReadBuildInfo()
+	if ok && buildInfo != nil && buildInfo.Main.Version != "" {
+		return buildInfo.Main.Version
+	}
+
+	return ""
+}
+
 func main() {
 	ctx := context.Background()
 
@@ -56,9 +65,8 @@ func main() {
 	}
 
 	if *versionFlag {
-		buildInfo, ok := debug.ReadBuildInfo()
-		if version == "" && ok && buildInfo != nil && buildInfo.Main.Version != "" {
-			version = buildInfo.Main.Version
+		if version == "" {
+			version = versionFromBuildInfo()
 		}
 		fmt.Printf("goose version: %s\n", strings.TrimSpace(version))
 		return
@@ -248,13 +256,14 @@ func usage() {
 }
 
 var (
-	usagePrefix = `Usage: goose [OPTIONS] DRIVER DBSTRING COMMAND
+	usagePrefix = `Usage: goose DRIVER DBSTRING [OPTIONS] COMMAND
 
 or
 
 Set environment key
 GOOSE_DRIVER=DRIVER
 GOOSE_DBSTRING=DBSTRING
+GOOSE_MIGRATION_DIR=MIGRATION_DIR
 
 Usage: goose [OPTIONS] COMMAND
 
@@ -262,11 +271,14 @@ Drivers:
     postgres
     mysql
     sqlite3
+    spanner
     mssql
+    azuresql
     redshift
     tidb
     clickhouse
     ydb
+    starrocks
     turso
 
 Examples:
@@ -281,6 +293,7 @@ Examples:
     goose redshift "postgres://user:password@qwerty.us-east-1.redshift.amazonaws.com:5439/db" status
     goose tidb "user:password@/dbname?parseTime=true" status
     goose mssql "sqlserver://user:password@dbname:1433?database=master" status
+    goose azuresql "sqlserver://myserver.database.windows.net?database=mydb&fedauth=ActiveDirectoryDefault" status
     goose clickhouse "tcp://127.0.0.1:9000" status
     goose ydb "grpcs://localhost:2135/local?go_query_mode=scripting&go_fake_tx=scripting&go_query_bind=declare,numeric" status
     goose turso "libsql://dbname.turso.io?authToken=token" status
@@ -308,6 +321,7 @@ Commands:
     status               Dump the migration status for the current DB
     version              Print the current version of the database
     create NAME [sql|go] Creates new migration file with the current timestamp
+    env                  Print the current Goose environment configuration
     fix                  Apply sequential ordering to migrations
     validate             Check migration files without running them
 `

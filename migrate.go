@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"math"
 	"path"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -63,9 +64,9 @@ func (ms Migrations) Next(current int64) (*Migration, error) {
 
 // Previous : Get the previous migration.
 func (ms Migrations) Previous(current int64) (*Migration, error) {
-	for i := len(ms) - 1; i >= 0; i-- {
-		if ms[i].Version < current {
-			return ms[i], nil
+	for _, m := range slices.Backward(ms) {
+		if m.Version < current {
+			return m, nil
 		}
 	}
 
@@ -119,11 +120,11 @@ func (ms Migrations) timestamped() (Migrations, error) {
 }
 
 func (ms Migrations) String() string {
-	str := ""
+	var str strings.Builder
 	for _, m := range ms {
-		str += fmt.Sprintln(m)
+		fmt.Fprintln(&str, m)
 	}
-	return str
+	return str.String()
 }
 
 func collectMigrationsFS(

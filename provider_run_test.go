@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"sync"
 	"testing"
 	"testing/fstest"
@@ -240,8 +241,7 @@ func TestProviderRun(t *testing.T) {
 			assertResult(t, res, s, "up", empty)
 		}
 		// Apply all migrations in the down direction.
-		for i := len(sources) - 1; i >= 0; i-- {
-			s := sources[i]
+		for _, s := range slices.Backward(sources) {
 			res, err := p.ApplyVersion(ctx, s.Version, false)
 			require.NoError(t, err)
 			// Round-trip the migration result through the database to ensure it's valid.
@@ -383,11 +383,9 @@ func TestConcurrentProvider(t *testing.T) {
 
 		ch := make(chan int64)
 		var wg sync.WaitGroup
-		for i := 0; i < maxVersion; i++ {
-			wg.Add(1)
+		for range maxVersion {
 
-			go func() {
-				defer wg.Done()
+			wg.Go(func() {
 				res, err := p.UpByOne(ctx)
 				if err != nil {
 					t.Error(err)
@@ -398,7 +396,7 @@ func TestConcurrentProvider(t *testing.T) {
 					return
 				}
 				ch <- res.Source.Version
-			}()
+			})
 		}
 		go func() {
 			wg.Wait()
@@ -413,7 +411,7 @@ func TestConcurrentProvider(t *testing.T) {
 			return
 		}
 		require.Equal(t, len(versions), maxVersion)
-		for i := 0; i < maxVersion; i++ {
+		for i := range maxVersion {
 			require.Equal(t, versions[i], int64(i+1))
 		}
 		currentVersion, err := p.GetDBVersion(ctx)
@@ -433,18 +431,16 @@ func TestConcurrentProvider(t *testing.T) {
 
 		ch := make(chan []*goose.MigrationResult)
 		var wg sync.WaitGroup
-		for i := 0; i < maxVersion; i++ {
-			wg.Add(1)
+		for range maxVersion {
 
-			go func() {
-				defer wg.Done()
+			wg.Go(func() {
 				res, err := p.DownTo(ctx, 0)
 				if err != nil {
 					t.Error(err)
 					return
 				}
 				ch <- res
-			}()
+			})
 		}
 		go func() {
 			wg.Wait()
@@ -770,7 +766,7 @@ func TestCustomStoreTableExists(t *testing.T) {
 	db := newDB(t)
 	store, err := database.NewStore(database.DialectSQLite3, goose.DefaultTablename)
 	require.NoError(t, err)
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		p, err := goose.NewProvider(goose.DialectCustom, db, newFsys(),
 			goose.WithStore(&customStoreSQLite3{store}),
 		)

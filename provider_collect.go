@@ -122,10 +122,6 @@ func merge(sources *fileSources, registered map[int64]*Migration) ([]*Migration,
 		migrations = append(migrations, m)
 		migrationLookup[source.Version] = m
 	}
-	// If there are no Go files in the filesystem and no registered Go migrations, return early.
-	if len(sources.goSources) == 0 && len(registered) == 0 {
-		return migrations, nil
-	}
 	// Return an error if the given sources contain a versioned Go migration that has not been
 	// registered. This is a sanity check to ensure users didn't accidentally create a valid looking
 	// Go migration file on disk and forget to register it.
@@ -184,7 +180,7 @@ func unregisteredError(unregistered []string) error {
 	}
 	var b strings.Builder
 
-	b.WriteString(fmt.Sprintf("error: detected %d unregistered Go %s:\n", len(unregistered), f))
+	fmt.Fprintf(&b, "error: detected %d unregistered Go %s:\n", len(unregistered), f)
 	for _, name := range unregistered {
 		b.WriteString("\t" + name + "\n")
 	}
